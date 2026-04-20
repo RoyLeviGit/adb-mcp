@@ -56,7 +56,13 @@ Clone or download the source code from the [main project page](https://github.co
 Note, you can use any client / code that supports MCP, just follow its instructions for how to configure.
 
 ### Install MCP for Development
-Navigate to the project directory and run:
+
+Navigate to the `mcp/` directory first:
+```bash
+cd /path/to/adb-mcp/mcp
+```
+
+#### Claude Desktop
 
 #### Photoshop
 ```bash
@@ -85,7 +91,40 @@ uv run mcp install --with fonttools --with python-socketio --with mcp --with req
 
 Restart Claude Desktop after installation.
 
+#### Claude Code (CLI)
+
+Use `claude mcp add` with `--python 3.12` (required — Python 3.13+ is not yet supported by all dependencies) and `mcp run` as the entrypoint:
+
+#### Photoshop
+```bash
+claude mcp add ps-mcp -- uv --directory /path/to/adb-mcp/mcp run --python 3.12 --with fonttools --with python-socketio --with mcp --with requests --with websocket-client --with numpy mcp run ps-mcp.py
+```
+
+#### Premiere Pro
+```bash
+claude mcp add pr-mcp -- uv --directory /path/to/adb-mcp/mcp run --python 3.12 --with fonttools --with python-socketio --with mcp --with requests --with websocket-client --with pillow mcp run pr-mcp.py
+```
+
+#### InDesign
+```bash
+claude mcp add id-mcp -- uv --directory /path/to/adb-mcp/mcp run --python 3.12 --with fonttools --with python-socketio --with mcp --with requests --with websocket-client --with pillow mcp run id-mcp.py
+```
+
+#### AfterEffects
+```bash
+claude mcp add ae-mcp -- uv --directory /path/to/adb-mcp/mcp run --python 3.12 --with fonttools --with python-socketio --with mcp --with requests --with websocket-client --with pillow mcp run ae-mcp.py
+```
+
+#### Illustrator
+```bash
+claude mcp add ai-mcp -- uv --directory /path/to/adb-mcp/mcp run --python 3.12 --with fonttools --with python-socketio --with mcp --with requests --with websocket-client --with pillow mcp run ai-mcp.py
+```
+
 ### Set Up Proxy Server
+
+The proxy server bridges the MCP server and the Adobe app plugins. It auto-starts when the MCP server initializes, so no manual setup is required in most cases.
+
+If you need to start it manually (e.g. to let a plugin connect before any MCP tool is called):
 
 #### Using Prebuilt Executables (Recommended)
 
@@ -95,13 +134,12 @@ Restart Claude Desktop after installation.
 
 #### Running from Source
 
-1. Navigate to the adb-proxy-socket directory
-2. Run `node proxy.js`
+1. Navigate to the `adb-proxy-socket` directory
+2. Run `npm install` (first time only)
+3. Run `node proxy.js`
 
 You should see a message like:  
-   `Photoshop MCP Command proxy server running on ws://localhost:3001`
-
-**Keep this running** — the proxy server must stay active for Claude to communicate with Adobe plugins.
+   `adb-mcp Command proxy server running on ws://localhost:3001`
 
 ### Install Plugins
 
@@ -162,9 +200,10 @@ Note if you don't want to symlink, you can copy com.mikechambers.ae / com.mikech
 
 Launch the following:
 
-1. Claude Desktop
-2. adb-proxy-socket node server
-3. Launch Photoshop, Premiere, InDesign, AfterEffects, Illustrator
+1. Claude Desktop / Claude Code
+2. Launch Photoshop, Premiere, InDesign, AfterEffects, Illustrator
+
+The proxy server starts automatically when the MCP initializes. If a plugin fails to connect, start the proxy manually — see [Set Up Proxy Server](#set-up-proxy-server).
 
 _TIP: Create a project for Photoshop / Premiere Pro in Claude and pre-load any app specific instructions in its Project knowledge._
 

@@ -562,6 +562,20 @@ const exportSequence = async (command) => {
     await manager.exportSequence(sequence, constants.ExportType.IMMEDIATELY, outputPath, presetPath);
 }
 
+const executeScript = async (command) => {
+    const options = command.options;
+    const scriptPath = options.scriptPath;
+    const params = options.params || {};
+
+    const storage = require("uxp").storage;
+    const entry = await fs.getEntryWithUrl(`file://${scriptPath}`);
+    const scriptCode = await entry.read({ format: storage.formats.utf8 });
+
+    const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+    const fn = new AsyncFunction('app', 'constants', 'fs', 'params', scriptCode);
+    return await fn(app, constants, fs, params);
+};
+
 const commandHandlers = {
     exportSequence,
     moveProjectItemsToBin,
@@ -585,6 +599,7 @@ const commandHandlers = {
     addMediaToSequence,
     importMedia,
     createProject,
+    executeScript,
 };
 
 module.exports = {

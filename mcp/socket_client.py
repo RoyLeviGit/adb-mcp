@@ -24,6 +24,9 @@ import socketio
 import time
 import threading
 import json
+import os
+import socket
+import subprocess
 from queue import Queue
 import logger
 
@@ -31,6 +34,73 @@ import logger
 proxy_url = None
 proxy_timeout = None
 application = None
+
+_proxy_process = None
+_proxy_lock = threading.Lock()
+
+def _find_node():
+    import shutil
+    node = shutil.which("node")
+    if node:
+        return node
+    for path in ["/usr/bin/node", "/usr/local/bin/node",
+                 "/home/linuxbrew/.linuxbrew/bin/node",
+                 os.path.expanduser("~/.nvm/versions/node/*/bin/node")]:
+        import glob
+        matches = glob.glob(path)
+        if matches:
+            return matches[0]
+        if os.path.exists(path):
+            return path
+    return None
+
+def _is_proxy_running(host, port):
+    try:
+        with socket.create_connection((host, port), timeout=1):
+            return True
+    except OSError:
+        return False
+
+def _ensure_proxy_running():
+    global _proxy_process
+
+    with _proxy_lock:
+        if _is_proxy_running("localhost", 3001):
+            return
+
+        proxy_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "adb-proxy-socket", "proxy.js"
+        )
+
+        if not os.path.exists(proxy_path):
+            logger.log(f"Proxy script not found at {proxy_path}")
+            return
+
+        node_bin = _find_node()
+        if not node_bin:
+            logger.log("node not found in PATH, cannot auto-start proxy")
+            return
+
+        logger.log(f"Starting proxy: {proxy_path}")
+        try:
+            _proxy_process = subprocess.Popen(
+                [node_bin, proxy_path],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except Exception as e:
+            logger.log(f"Failed to start proxy: {e}")
+            return
+
+        # Wait up to 5 seconds for the proxy to be ready
+        for _ in range(10):
+            time.sleep(0.5)
+            if _is_proxy_running("localhost", 3001):
+                logger.log("Proxy started successfully")
+                return
+
+        logger.log("Proxy did not start in time")
 
 def send_message_blocking(command, timeout=None):
     """
@@ -51,7 +121,7 @@ def send_message_blocking(command, timeout=None):
     if not application or not proxy_url or not proxy_timeout:
         logger.log("Socket client not configured. Call configure() first.")
         return None
-    
+
     # Use provided timeout or default
     wait_timeout = timeout if timeout is not None else proxy_timeout
     
@@ -163,3 +233,4 @@ def configure(app=None, url=None, timeout=None):
         proxy_timeout = timeout
     
     logger.log(f"Socket client configured: app={application}, url={proxy_url}, timeout={proxy_timeout}")
+    _ensure_proxy_running()
